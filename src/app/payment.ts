@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, signal, OnInit } from '@ang
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
+import { OrderService } from './order.service';
 
 @Component({
   selector: 'app-payment',
@@ -55,11 +56,11 @@ import { ActivatedRoute, Router } from '@angular/router';
           <div class="flex flex-col items-center gap-4 py-4 bg-white rounded-xl border border-gray-100">
             <!-- Actual QR Code Image -->
             <div class="w-48 h-48 bg-white flex items-center justify-center border border-gray-100 rounded-lg overflow-hidden shadow-inner">
-               <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=9905870112@ibl%26pn=Krishna%20GharFix" 
+               <img [src]="'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=9905870112@ibl%26pn=Krishna%20GharFix%26am=' + amount() + '%26cu=INR'" 
                     alt="Payment QR Code" 
                     class="w-full h-full object-contain p-2">
             </div>
-            <p class="text-[10px] text-gray-400">Scan to pay directly to Krishna (9905870112@ibl)</p>
+            <p class="text-[10px] text-gray-400">Scan to pay ₹{{ amount() }} to Krishna (9905870112@ibl)</p>
           </div>
 
           <button (click)="payViaUPI()" class="btn-primary w-full mt-4">
@@ -84,7 +85,7 @@ import { ActivatedRoute, Router } from '@angular/router';
         </div>
 
         <!-- Cash Option -->
-        <div class="card hover:border-gray-300 transition-colors cursor-pointer">
+        <div (click)="payViaCash()" tabindex="0" role="button" (keydown.enter)="payViaCash()" class="card hover:border-primary transition-colors cursor-pointer active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/50">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-3">
               <div class="bg-gray-100 p-2 rounded-lg">
@@ -110,6 +111,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 export class Payment implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private orderService = inject(OrderService);
 
   serviceId = signal<string>('');
   serviceName = signal<string>('');
@@ -123,6 +125,12 @@ export class Payment implements OnInit {
       this.serviceName.set(this.capitalize(params['id']));
       this.setServiceDetails(params['id']);
     });
+
+    // Override amount if passed in query params
+    const queryPrice = this.route.snapshot.queryParams['price'];
+    if (queryPrice) {
+      this.amount.set(Number(queryPrice));
+    }
   }
 
   capitalize(s: string) {
@@ -148,8 +156,53 @@ export class Payment implements OnInit {
 
   payViaUPI() {
     // Simulate successful payment and navigate to success screen
+    const q = this.route.snapshot.queryParams;
+    const address = q['address'];
+    const name = q['name'];
+    const mobile = q['mobile'];
+    const floor = q['floor'];
+    const roomNo = q['roomNo'];
+
+    // Save real order to shared storage ONLY after payment
+    this.orderService.addOrder({
+      customer: name || 'Customer',
+      mobile: mobile || '',
+      service: this.serviceName(),
+      price: this.amount(),
+      address: address || '',
+      floor: floor || '',
+      roomNo: roomNo || '',
+      paymentType: 'online'
+    });
+
     setTimeout(() => {
-      this.router.navigate(['/success', this.serviceId()]);
+      this.router.navigate(['/success', this.serviceId()], {
+        queryParams: { address, name, floor, roomNo }
+      });
     }, 1000);
+  }
+
+  payViaCash() {
+    const q = this.route.snapshot.queryParams;
+    const address = q['address'];
+    const name = q['name'];
+    const mobile = q['mobile'];
+    const floor = q['floor'];
+    const roomNo = q['roomNo'];
+
+    this.orderService.addOrder({
+      customer: name || 'Customer',
+      mobile: mobile || '',
+      service: this.serviceName(),
+      price: this.amount(),
+      address: address || '',
+      floor: floor || '',
+      roomNo: roomNo || '',
+      paymentType: 'cash'
+    });
+
+    this.router.navigate(['/success', this.serviceId()], {
+      queryParams: { address, name, floor, roomNo }
+    });
   }
 }

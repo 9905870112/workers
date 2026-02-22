@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from './auth';
 import { Router } from '@angular/router';
+import { GeminiService } from './gemini';
 
 interface Booking {
   id: string;
@@ -81,19 +82,35 @@ interface Booking {
                   <span class="text-[10px] font-bold text-gray-400">{{ booking.time }}</span>
                 </div>
                 
-                <div class="flex items-center gap-2 text-xs text-gray-600 mb-4 bg-gray-50 p-2 rounded-lg">
-                  <mat-icon class="!text-sm">location_on</mat-icon>
-                  <span class="truncate">{{ booking.address }}</span>
+                <div class="flex flex-col gap-2 mb-4">
+                  <div class="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
+                    <mat-icon class="!text-sm">location_on</mat-icon>
+                    <span class="truncate">{{ booking.address }}</span>
+                  </div>
+                  
+                  @if (locationTips()[booking.id]) {
+                    <div class="bg-blue-50 p-3 rounded-xl text-[10px] text-blue-800 leading-relaxed border border-blue-100">
+                      <div class="flex items-center gap-1 mb-1 font-bold">
+                        <mat-icon class="!text-xs">auto_awesome</mat-icon>
+                        AI LOCATION TIPS
+                      </div>
+                      {{ locationTips()[booking.id] }}
+                    </div>
+                  }
                 </div>
 
-                <div class="flex gap-2">
-                  <button class="flex-1 bg-secondary text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                <div class="flex flex-wrap gap-2">
+                  <button (click)="getTips(booking)" class="flex-1 min-w-[120px] bg-blue-600 text-white py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
+                    <mat-icon class="!text-sm">map</mat-icon>
+                    {{ loadingTips()[booking.id] ? 'Loading...' : 'Location Tips' }}
+                  </button>
+                  <button (click)="openMap(booking.address)" class="flex-1 min-w-[120px] bg-secondary text-white py-2 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
                     <mat-icon class="!text-sm">directions</mat-icon>
                     Navigate
                   </button>
-                  <button class="flex-1 bg-primary text-secondary py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1">
+                  <button class="w-full bg-primary text-secondary py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 mt-1">
                     <mat-icon class="!text-sm">check_circle</mat-icon>
-                    Complete
+                    Complete Job
                   </button>
                 </div>
               </div>
@@ -108,14 +125,38 @@ interface Booking {
 export class Worker implements OnInit {
   auth = inject(AuthService);
   private router = inject(Router);
+  private gemini = inject(GeminiService);
 
   bookings = signal<Booking[]>([
-    // ... same data ...
+    { id: 'b1', customer: 'Rahul Sharma', mobile: '9876543210', service: 'Electrician', address: 'Flat 402, Sunshine Apartments, Sector 62, Noida', status: 'active', time: '10:30 AM' },
+    { id: 'b2', customer: 'Priya Verma', mobile: '9988776655', service: 'Plumber', address: 'House No. 12, Gali 4, Laxmi Nagar, Delhi', status: 'active', time: '12:15 PM' },
   ]);
+
+  locationTips = signal<Record<string, string>>({});
+  loadingTips = signal<Record<string, boolean>>({});
 
   ngOnInit() {
     if (this.auth.currentUser()?.role !== 'worker' && this.auth.currentUser()?.role !== 'manager') {
       this.router.navigate(['/login'], { queryParams: { role: 'worker' } });
     }
+  }
+
+  async getTips(booking: Booking) {
+    if (this.loadingTips()[booking.id]) return;
+    
+    this.loadingTips.update(v => ({ ...v, [booking.id]: true } as Record<string, boolean>));
+    try {
+      const tips = await this.gemini.getLocationInfo(booking.address);
+      this.locationTips.update(v => ({ ...v, [booking.id]: tips } as Record<string, string>));
+    } catch (e) {
+      console.error(e);
+      alert('Could not get location tips');
+    } finally {
+      this.loadingTips.update(v => ({ ...v, [booking.id]: false } as Record<string, boolean>));
+    }
+  }
+
+  openMap(address: string) {
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank');
   }
 }

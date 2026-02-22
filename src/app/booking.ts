@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { OrderService } from './order.service';
 
 @Component({
   selector: 'app-booking',
@@ -46,6 +47,17 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
           }
           <form [formGroup]="bookingForm" class="space-y-4">
             <div>
+              <label for="name" class="block text-xs font-bold text-gray-500 uppercase mb-1">Your Full Name</label>
+              <input 
+                id="name"
+                type="text" 
+                formControlName="name"
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
+                placeholder="Enter your name"
+              >
+            </div>
+
+            <div>
               <label for="mobile" class="block text-xs font-bold text-gray-500 uppercase mb-1">Mobile Number</label>
               <div class="relative">
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+91</span>
@@ -60,14 +72,37 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
             </div>
 
             <div>
-              <label for="address" class="block text-xs font-bold text-gray-500 uppercase mb-1">Service Address</label>
+              <label for="address" class="block text-xs font-bold text-gray-500 uppercase mb-1">Area / Landmark</label>
               <textarea 
                 id="address"
                 formControlName="address"
-                rows="3"
+                rows="2"
                 class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
-                placeholder="Enter your full address"
+                placeholder="Enter area or landmark"
               ></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="floor" class="block text-xs font-bold text-gray-500 uppercase mb-1">Floor</label>
+                <input 
+                  id="floor"
+                  type="text" 
+                  formControlName="floor"
+                  class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="e.g. 2nd Floor"
+                >
+              </div>
+              <div>
+                <label for="roomNo" class="block text-xs font-bold text-gray-500 uppercase mb-1">Room / Flat No</label>
+                <input 
+                  id="roomNo"
+                  type="text" 
+                  formControlName="roomNo"
+                  class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary"
+                  placeholder="e.g. 204"
+                >
+              </div>
             </div>
 
             <button 
@@ -95,6 +130,10 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
             
             <div class="space-y-3">
               <div class="flex justify-between text-sm">
+                <span class="text-gray-500">Customer</span>
+                <span class="font-bold">{{ bookingForm.value.name }}</span>
+              </div>
+              <div class="flex justify-between text-sm">
                 <span class="text-gray-500">Service</span>
                 <span class="font-bold">{{ serviceName() }}</span>
               </div>
@@ -110,7 +149,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
               </div>
               <div class="flex flex-col gap-1 text-sm">
                 <span class="text-gray-500">Address</span>
-                <span class="font-bold">{{ bookingForm.value.address }}</span>
+                <span class="font-bold">{{ bookingForm.value.address }}, Floor: {{ bookingForm.value.floor }}, Room: {{ bookingForm.value.roomNo }}</span>
               </div>
             </div>
           </div>
@@ -161,6 +200,7 @@ export class Booking implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private orderService = inject(OrderService);
 
   serviceId = signal<string>('');
   serviceName = signal<string>('');
@@ -175,8 +215,11 @@ export class Booking implements OnInit {
   ];
   
   bookingForm = this.fb.group({
+    name: ['', [Validators.required, Validators.minLength(3)]],
     mobile: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]],
     address: ['', [Validators.required, Validators.minLength(10)]],
+    floor: ['', [Validators.required]],
+    roomNo: ['', [Validators.required]],
   });
 
   ngOnInit() {
@@ -240,10 +283,15 @@ export class Booking implements OnInit {
         this.countdown.update(v => v - 1);
       } else {
         clearInterval(interval);
+        
         this.router.navigate(['/payment', this.serviceId()], {
           queryParams: { 
+            name: this.bookingForm.value.name,
             mobile: this.bookingForm.value.mobile,
-            address: this.bookingForm.value.address
+            address: this.bookingForm.value.address,
+            floor: this.bookingForm.value.floor,
+            roomNo: this.bookingForm.value.roomNo,
+            price: 500 // Pass price to payment
           }
         });
       }

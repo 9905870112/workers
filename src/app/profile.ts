@@ -1,49 +1,39 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { AuthService } from './auth';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, MatIconModule, RouterLink],
+  imports: [CommonModule, MatIconModule],
   template: `
     <div class="p-4 space-y-6">
       <h2 class="font-bold text-2xl">Profile</h2>
 
       @if (!auth.currentUser()) {
         <div class="space-y-4">
-          <p class="text-gray-500 text-sm">Select your role to continue</p>
+          <p class="text-gray-500 text-sm">Portal Access</p>
           
           <div class="grid gap-4">
-            <button (click)="goToLogin('customer')" class="card flex items-center gap-4 hover:border-primary text-left">
-              <div class="icon-box bg-blue-100 text-blue-600">
-                <mat-icon>person</mat-icon>
-              </div>
-              <div>
-                <h4 class="font-bold">Customer</h4>
-                <p class="text-[10px] text-gray-500">Book services & track orders</p>
-              </div>
-            </button>
-
-            <button (click)="goToLogin('worker')" class="card flex items-center gap-4 hover:border-primary text-left">
-              <div class="icon-box bg-orange-100 text-orange-600">
-                <mat-icon>engineering</mat-icon>
-              </div>
-              <div>
-                <h4 class="font-bold">Worker</h4>
-                <p class="text-[10px] text-gray-500">View jobs & update status</p>
-              </div>
-            </button>
-
-            <button (click)="goToLogin('manager')" class="card flex items-center gap-4 hover:border-primary text-left">
+            <button (click)="goToLogin('manager')" class="card flex items-center gap-4 hover:border-primary text-left bg-purple-50/50 border-purple-100">
               <div class="icon-box bg-purple-100 text-purple-600">
                 <mat-icon>admin_panel_settings</mat-icon>
               </div>
               <div>
-                <h4 class="font-bold">Manager</h4>
-                <p class="text-[10px] text-gray-500">Verify workers & manage app</p>
+                <h4 class="font-bold">Manager Login</h4>
+                <p class="text-[10px] text-gray-500">Access bookings & customer location data</p>
+              </div>
+            </button>
+
+            <button (click)="goToLogin('worker')" class="card flex items-center gap-4 hover:border-primary text-left bg-blue-50/50 border-blue-100">
+              <div class="icon-box bg-blue-100 text-blue-600">
+                <mat-icon>engineering</mat-icon>
+              </div>
+              <div>
+                <h4 class="font-bold">Worker Login</h4>
+                <p class="text-[10px] text-gray-500">View assigned tasks & mark completion</p>
               </div>
             </button>
           </div>

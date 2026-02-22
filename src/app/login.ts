@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { AuthService, UserRole } from './auth';
+import { Auth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from '@angular/fire/auth';
 
 @Pipe({
   name: 'capitalize',
@@ -36,21 +37,28 @@ export class CapitalizePipe implements PipeTransform {
             <form [formGroup]="phoneForm" (ngSubmit)="sendOTP()" class="space-y-4">
               <div>
                 <label for="phone" class="block text-xs font-bold text-gray-500 uppercase mb-1">Mobile Number</label>
-                <input id="phone" type="tel" formControlName="phone" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Enter 10 digit number">
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+91</span>
+                  <input id="phone" type="tel" formControlName="phone" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Enter 10 digit number">
+                </div>
               </div>
-              <button [disabled]="phoneForm.invalid" type="submit" class="btn-primary w-full">Send OTP</button>
+              <div id="recaptcha-container"></div>
+              <button [disabled]="phoneForm.invalid || loading()" type="submit" class="btn-primary w-full">
+                {{ loading() ? 'Sending...' : 'Send OTP' }}
+              </button>
             </form>
           } @else {
             <form [formGroup]="otpForm" (ngSubmit)="verifyOTP()" class="space-y-4">
               <div class="text-center">
-                <p class="text-sm text-gray-500 mb-2">OTP sent to {{ phoneForm.value.phone }}</p>
-                <p class="text-xs font-bold text-primary-dark">Your AI Generated OTP: {{ generatedOTP() }}</p>
+                <p class="text-sm text-gray-500 mb-2">OTP sent to +91 {{ phoneForm.value.phone }}</p>
               </div>
               <div>
-                <label for="otp" class="block text-xs font-bold text-gray-500 uppercase mb-1 text-center">Enter 4-Digit OTP</label>
-                <input id="otp" type="text" formControlName="otp" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary text-center text-2xl tracking-[1rem]" maxlength="4">
+                <label for="otp" class="block text-xs font-bold text-gray-500 uppercase mb-1 text-center">Enter 6-Digit OTP</label>
+                <input id="otp" type="text" formControlName="otp" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary text-center text-2xl tracking-[0.5rem]" maxlength="6">
               </div>
-              <button [disabled]="otpForm.invalid" type="submit" class="btn-primary w-full">Verify & Login</button>
+              <button [disabled]="otpForm.invalid || loading()" type="submit" class="btn-primary w-full">
+                {{ loading() ? 'Verifying...' : 'Verify & Login' }}
+              </button>
               <button (click)="step.set('phone')" type="button" class="w-full text-xs text-gray-400 font-bold">Change Number</button>
             </form>
           }
@@ -63,21 +71,29 @@ export class CapitalizePipe implements PipeTransform {
             </div>
             <div>
               <label for="reg-phone" class="block text-xs font-bold text-gray-500 uppercase mb-1">Mobile Number</label>
-              <input id="reg-phone" type="tel" formControlName="phone" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Enter Phone">
+              <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">+91</span>
+                <input id="reg-phone" type="tel" formControlName="phone" class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Enter Phone">
+              </div>
             </div>
-            <button [disabled]="managerRegForm.invalid" type="submit" class="btn-primary w-full">Verify with OTP</button>
+            <div id="recaptcha-container"></div>
+            <button [disabled]="managerRegForm.invalid || loading()" type="submit" class="btn-primary w-full">
+              {{ loading() ? 'Sending...' : 'Verify with OTP' }}
+            </button>
             <button (click)="isRegisteringManager.set(false); step.set('id-pass')" type="button" class="w-full text-xs text-gray-400 font-bold">Back to Login</button>
           </form>
         } @else if (role() === 'manager' && step() === 'otp' && isRegisteringManager()) {
           <form [formGroup]="otpForm" (ngSubmit)="verifyOTP()" class="space-y-4">
             <div class="text-center">
-              <p class="text-xs font-bold text-primary-dark">Manager Verification OTP: {{ generatedOTP() }}</p>
+              <p class="text-xs font-bold text-primary-dark">Enter OTP sent to your phone</p>
             </div>
             <div>
               <label for="otp-reg" class="block text-xs font-bold text-gray-500 uppercase mb-1 text-center">Enter OTP</label>
-              <input id="otp-reg" type="text" formControlName="otp" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary text-center text-2xl tracking-[1rem]" maxlength="4">
+              <input id="otp-reg" type="text" formControlName="otp" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary text-center text-2xl tracking-[0.5rem]" maxlength="6">
             </div>
-            <button [disabled]="otpForm.invalid" type="submit" class="btn-primary w-full">Verify OTP</button>
+            <button [disabled]="otpForm.invalid || loading()" type="submit" class="btn-primary w-full">
+              {{ loading() ? 'Verifying...' : 'Verify OTP' }}
+            </button>
           </form>
         } @else if (role() === 'manager' && step() === 'set-password') {
           <form [formGroup]="setPasswordForm" (ngSubmit)="finishManagerReg()" class="space-y-4">
@@ -90,7 +106,7 @@ export class CapitalizePipe implements PipeTransform {
               <label for="reg-pass" class="block text-xs font-bold text-gray-500 uppercase mb-1">New Password</label>
               <input id="reg-pass" type="password" formControlName="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Set Password">
             </div>
-            <button [disabled]="setPasswordForm.invalid" type="submit" class="btn-primary w-full">Complete Registration</button>
+            <button [disabled]="setPasswordForm.invalid || loading()" type="submit" class="btn-primary w-full">Complete Registration</button>
           </form>
         } @else {
           <!-- Worker/Manager ID/Pass Login -->
@@ -103,7 +119,7 @@ export class CapitalizePipe implements PipeTransform {
               <label for="pass" class="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label>
               <input id="pass" type="password" formControlName="password" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary" placeholder="Enter Password">
             </div>
-            <button [disabled]="idPassForm.invalid" type="submit" class="btn-primary w-full">Login</button>
+            <button [disabled]="idPassForm.invalid || loading()" type="submit" class="btn-primary w-full">Login</button>
             
             @if (role() === 'manager') {
               <button (click)="startManagerReg()" type="button" class="w-full text-xs text-primary-dark font-bold mt-4">New Manager? Register Here</button>
@@ -121,19 +137,23 @@ export class Login implements OnInit {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
-  private auth = inject(AuthService);
+  private authService = inject(AuthService);
+  private firebaseAuth = inject(Auth);
 
   role = signal<UserRole>(null);
   step = signal<'phone' | 'otp' | 'id-pass' | 'set-password' | 'manager-init'>('phone');
-  generatedOTP = signal<string>('');
+  loading = signal<boolean>(false);
   isRegisteringManager = signal<boolean>(false);
+  
+  private recaptchaVerifier: RecaptchaVerifier | null = null;
+  private confirmationResult: ConfirmationResult | null = null;
 
   phoneForm = this.fb.group({
     phone: ['', [Validators.required, Validators.pattern(/^[0-9]{10}$/)]]
   });
 
   otpForm = this.fb.group({
-    otp: ['', [Validators.required, Validators.pattern(/^[0-9]{4}$/)]]
+    otp: ['', [Validators.required, Validators.pattern(/^[0-9]{6}$/)]]
   });
 
   idPassForm = this.fb.group({
@@ -174,38 +194,74 @@ export class Login implements OnInit {
     this.step.set('manager-init');
   }
 
-  sendOTP() {
-    // Check if manager reg requirements are met
+  async sendOTP() {
+    if (this.loading()) return;
+
+    const phone = this.isRegisteringManager() 
+      ? this.managerRegForm.value.phone 
+      : this.phoneForm.value.phone;
+
     if (this.isRegisteringManager()) {
-      const { id, phone } = this.managerRegForm.value;
+      const id = this.managerRegForm.value.id;
       if (id !== 'kitti99058' || phone !== '9905870112') {
         alert('Invalid Manager ID or Phone for registration!');
         return;
       }
     }
 
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    this.generatedOTP.set(otp);
-    this.step.set('otp');
+    try {
+      this.loading.set(true);
+      
+      if (!this.recaptchaVerifier) {
+        this.recaptchaVerifier = new RecaptchaVerifier(this.firebaseAuth, 'recaptcha-container', {
+          size: 'invisible'
+        });
+      }
+
+      const phoneNumber = `+91${phone}`;
+      this.confirmationResult = await signInWithPhoneNumber(this.firebaseAuth, phoneNumber, this.recaptchaVerifier);
+      
+      this.step.set('otp');
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('Firebase Auth Error:', err);
+      alert('Error sending OTP: ' + err.message);
+      if (this.recaptchaVerifier) {
+        this.recaptchaVerifier.clear();
+        this.recaptchaVerifier = null;
+      }
+    } finally {
+      this.loading.set(false);
+    }
   }
 
-  verifyOTP() {
-    if (this.otpForm.value.otp === this.generatedOTP()) {
+  async verifyOTP() {
+    if (this.loading() || !this.confirmationResult) return;
+
+    try {
+      this.loading.set(true);
+      const otp = this.otpForm.value.otp!;
+      await this.confirmationResult.confirm(otp);
+
       if (this.isRegisteringManager()) {
         this.step.set('set-password');
       } else {
-        this.auth.login('customer', this.phoneForm.value.phone!, 'Customer User');
+        this.authService.login('customer', this.phoneForm.value.phone!, 'Customer User');
         this.router.navigate(['/']);
       }
-    } else {
-      alert('Invalid OTP! Try again.');
+    } catch (error: unknown) {
+      const err = error as Error;
+      console.error('OTP Verification Error:', err);
+      alert('Invalid OTP: ' + err.message);
+    } finally {
+      this.loading.set(false);
     }
   }
 
   finishManagerReg() {
     const { id, phone } = this.managerRegForm.value;
     const { password, name } = this.setPasswordForm.value;
-    this.auth.registerManager(id!, phone!, password!, name!);
+    this.authService.registerManager(id!, phone!, password!, name!);
     alert('Manager Registered Successfully!');
     this.isRegisteringManager.set(false);
     this.step.set('id-pass');
@@ -215,21 +271,26 @@ export class Login implements OnInit {
     const { id, password } = this.idPassForm.value;
     
     if (this.role() === 'manager') {
-      const manager = this.auth.getManager(id!);
-      if (manager && manager.pass === password) {
-        this.auth.login('manager', id!, manager.name);
+      if (id === 'chandani99058' && password === 'kitti#') {
+        this.authService.login('manager', id, 'Chandani Manager');
         this.router.navigate(['/']);
+        return;
+      } else {
+        alert('Invalid Manager Credentials! Access Denied.');
         return;
       }
     }
 
-    // Default demo logic
-    if (password === 'pass123') {
-      const name = this.role() === 'manager' ? 'Admin Manager' : 'Field Worker';
-      this.auth.login(this.role(), id!, name);
-      this.router.navigate(['/']);
-    } else {
-      alert('Invalid Credentials!');
+    if (this.role() === 'worker') {
+      if (this.authService.loginWorker(id!, password!)) {
+        this.router.navigate(['/worker-dashboard']);
+        return;
+      } else {
+        alert('Invalid Worker Credentials!');
+        return;
+      }
     }
+
+    alert('Login not supported for this role.');
   }
 }

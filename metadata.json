@@ -1,0 +1,5 @@
+{
+  "name": "GharFix",
+  "description": "Professional home services booking app with direct UPI payment integration.",
+  "requestFramePermissions": ["geolocation"]
+}

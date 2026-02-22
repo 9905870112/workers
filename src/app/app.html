@@ -1,0 +1,22 @@
+<div class="bg-gray-50 min-h-screen relative">
+  <!-- Main Content -->
+  <main class="max-w-md mx-auto min-h-screen pb-24">
+    <router-outlet></router-outlet>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <nav class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
+    <a routerLink="/" routerLinkActive="text-secondary" [routerLinkActiveOptions]="{exact: true}" class="flex flex-col items-center gap-1 text-gray-400 transition-colors">
+      <mat-icon>home</mat-icon>
+      <span class="text-[10px] font-bold">Home</span>
+    </a>
+    <a routerLink="/worker" routerLinkActive="text-secondary" class="flex flex-col items-center gap-1 text-gray-400 transition-colors">
+      <mat-icon>engineering</mat-icon>
+      <span class="text-[10px] font-bold">Jobs</span>
+    </a>
+    <a routerLink="/profile" routerLinkActive="text-secondary" class="flex flex-col items-center gap-1 text-gray-400 transition-colors">
+      <mat-icon>account_circle</mat-icon>
+      <span class="text-[10px] font-bold">Profile</span>
+    </a>
+  </nav>
+</div>
